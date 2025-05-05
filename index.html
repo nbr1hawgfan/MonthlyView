@@ -1,392 +1,430 @@
-import React, { useState, useEffect } from 'react';
-import { LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-
-const PowerBIDashboard = () => {
-  const [data, setData] = useState([]);
-  const [selectedMetric, setSelectedMetric] = useState('Total Revenue');
-  const [selectedMonth, setSelectedMonth] = useState('All');
-  const [selectedLocation, setSelectedLocation] = useState('All');
-
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const response = await window.fs.readFile('paste.txt', { encoding: 'utf8' });
-        const Papa = (await import('papaparse')).default;
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Warehouse Operations Dashboard</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://unpkg.com/recharts@2.7.2/umd/Recharts.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body>
+    <div id="root"></div>
+    
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+        const { LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } = Recharts;
         
-        const parsed = Papa.parse(response, {
-          header: true,
-          dynamicTyping: false,
-          skipEmptyLines: true,
-          complete: true
-        });
+        // Sample data for demonstration
+        const sampleData = `Month,Location,Units In,Inbound Revenue,Units Out,Outbound Revenue,1st of Storage Rev,Reoccurring Units,Reoccurring Storage Rev,Accesorial Charges,Handling Revenue,Total Revenue,Fixed Cost,Forklift Cost,Warehouse Supplies,Total Variable Cost,Number ManHours,Hourly Labor Cost,Management Cost,Total Labor Cost,Total Cost,Margin,Margin %
+January 2025,5TH STREET,2317,$11782.20,1365,$67.50,$27055.14,2317,$11331.15,$562.50,$0.00,$50798.49,$43337.98,$1119.68,$2239.36,$3359.05,461.75,$6344.86,$3230.14,$9575.00,$56272.02,-$5473.53,-10.77%
+January 2025,5TH 3109,328,$820.00,370,$925.00,$17640.00,0,$0.00,$192.00,$0.00,$19577.00,$14414.59,$372.42,$744.83,$1117.25,16.00,$329.12,$646.03,$975.15,$16506.98,$3070.02,15.68%
+January 2025,501 FRESNO,651,$3281.40,677,$0.00,$15472.80,651,$3067.65,$0.00,$0.00,$21821.85,$11902.24,$307.51,$615.01,$922.52,126.25,$2583.18,$2454.90,$5038.09,$17862.85,$3959.00,18.14%
+January 2025,1400 S 6TH,520,$2704.00,557,$0.00,$49870.17,0,$0.00,$0.00,$0.00,$52574.17,$46792.45,$1208.93,$2417.86,$3626.80,463.50,$5822.60,$6201.86,$12024.46,$62443.71,-$9869.54,-18.77%
+January 2025,NISSAN,10030,$82781.60,9558,$3392.00,$60136.44,0,$0.00,$28051.14,$0.00,$189642.07,$44374.32,$1338.75,$2677.50,$4016.25,4168.00,$66799.52,$25388.87,$92188.39,$140578.96,$46901.75,19.37%`;
 
-        const cleanedData = parsed.data
-          .filter(row => row.Month && row.Location)
-          .map(row => {
-            const cleanedRow = { ...row };
-            
-            // Convert currency fields to numbers
-            const currencyFields = [
-              'Inbound Revenue', 'Outbound Revenue', '1st of Storage Rev', 'Reoccurring Storage Rev',
-              'Accesorial Charges', 'Handling Revenue', 'Total Revenue', 'Fixed Cost', 'Forklift Cost',
-              'Warehouse Supplies', 'Total Variable Cost', 'Hourly Labor Cost', 'Management Cost',
-              'Total Labor Cost', 'Total Cost', 'Margin'
-            ];
-            
-            currencyFields.forEach(field => {
-              if (row[field]) {
-                cleanedRow[field] = parseFloat(row[field].replace(/[\$,]/g, ''));
-              } else {
-                cleanedRow[field] = 0;
-              }
+        const PowerBIDashboard = () => {
+            const [data, setData] = useState([]);
+            const [selectedMetric, setSelectedMetric] = useState('Total Revenue');
+            const [selectedMonth, setSelectedMonth] = useState('All');
+            const [selectedLocation, setSelectedLocation] = useState('All');
+
+            useEffect(() => {
+                const fetchData = async () => {
+                    try {
+                        let fileContent;
+                        
+                        // Try to fetch paste.txt, fall back to sample data if not found
+                        try {
+                            const response = await fetch('paste.txt');
+                            fileContent = await response.text();
+                        } catch (error) {
+                            console.log('Using sample data - paste.txt not found');
+                            fileContent = sampleData;
+                        }
+                        
+                        const parsed = Papa.parse(fileContent, {
+                            header: true,
+                            dynamicTyping: false,
+                            skipEmptyLines: true,
+                            complete: true
+                        });
+
+                        const cleanedData = parsed.data
+                            .filter(row => row.Month && row.Location)
+                            .map(row => {
+                                const cleanedRow = { ...row };
+                                
+                                // Convert currency fields to numbers
+                                const currencyFields = [
+                                    'Inbound Revenue', 'Outbound Revenue', '1st of Storage Rev', 'Reoccurring Storage Rev',
+                                    'Accesorial Charges', 'Handling Revenue', 'Total Revenue', 'Fixed Cost', 'Forklift Cost',
+                                    'Warehouse Supplies', 'Total Variable Cost', 'Hourly Labor Cost', 'Management Cost',
+                                    'Total Labor Cost', 'Total Cost', 'Margin'
+                                ];
+                                
+                                currencyFields.forEach(field => {
+                                    if (row[field]) {
+                                        cleanedRow[field] = parseFloat(row[field].replace(/[\$,]/g, ''));
+                                    } else {
+                                        cleanedRow[field] = 0;
+                                    }
+                                });
+                                
+                                // Convert numeric fields
+                                ['Units In', 'Units Out', 'Reoccurring Units', 'Number ManHours'].forEach(field => {
+                                    cleanedRow[field] = row[field] ? parseFloat(row[field]) : 0;
+                                });
+                                
+                                // Convert Margin %
+                                if (row['Margin %']) {
+                                    cleanedRow['Margin %'] = parseFloat(row['Margin %'].replace('%', '')) / 100;
+                                } else {
+                                    cleanedRow['Margin %'] = 0;
+                                }
+                                
+                                return cleanedRow;
+                            });
+
+                        setData(cleanedData);
+                    } catch (error) {
+                        console.error('Error processing data:', error);
+                    }
+                };
+
+                fetchData();
+            }, []);
+
+            // Get unique months and locations for filters
+            const months = ['All', ...new Set(data.map(d => d.Month))];
+            const locations = ['All', ...new Set(data.map(d => d.Location))];
+
+            // Filter data based on selections
+            const filteredData = data.filter(d => {
+                const monthMatch = selectedMonth === 'All' || d.Month === selectedMonth;
+                const locationMatch = selectedLocation === 'All' || d.Location === selectedLocation;
+                return monthMatch && locationMatch;
             });
-            
-            // Convert numeric fields
-            ['Units In', 'Units Out', 'Reoccurring Units', 'Number ManHours'].forEach(field => {
-              cleanedRow[field] = row[field] ? parseFloat(row[field]) : 0;
-            });
-            
-            // Convert Margin %
-            if (row['Margin %']) {
-              cleanedRow['Margin %'] = parseFloat(row['Margin %'].replace('%', '')) / 100;
-            } else {
-              cleanedRow['Margin %'] = 0;
-            }
-            
-            return cleanedRow;
-          });
 
-        setData(cleanedData);
-      } catch (error) {
-        console.error('Error reading file:', error);
-      }
-    };
+            // Aggregate data by month for trend analysis
+            const monthlyData = data.reduce((acc, curr) => {
+                if (!acc[curr.Month]) {
+                    acc[curr.Month] = {
+                        'Total Revenue': 0,
+                        'Total Cost': 0,
+                        'Margin': 0,
+                        'Units In': 0,
+                        'Units Out': 0,
+                        count: 0
+                    };
+                }
+                acc[curr.Month]['Total Revenue'] += curr['Total Revenue'];
+                acc[curr.Month]['Total Cost'] += curr['Total Cost'];
+                acc[curr.Month]['Margin'] += curr['Margin'];
+                acc[curr.Month]['Units In'] += curr['Units In'];
+                acc[curr.Month]['Units Out'] += curr['Units Out'];
+                acc[curr.Month].count += 1;
+                return acc;
+            }, {});
 
-    fetchData();
-  }, []);
+            const monthlyChartData = Object.entries(monthlyData).map(([month, values]) => ({
+                month,
+                ...values
+            }));
 
-  // Get unique months and locations for filters
-  const months = ['All', ...new Set(data.map(d => d.Month))];
-  const locations = ['All', ...new Set(data.map(d => d.Location))];
+            // Aggregate data by location
+            const locationData = data.reduce((acc, curr) => {
+                if (!acc[curr.Location]) {
+                    acc[curr.Location] = {
+                        'Total Revenue': 0,
+                        'Total Cost': 0,
+                        'Margin': 0,
+                        'Margin %': 0,
+                        count: 0
+                    };
+                }
+                acc[curr.Location]['Total Revenue'] += curr['Total Revenue'];
+                acc[curr.Location]['Total Cost'] += curr['Total Cost'];
+                acc[curr.Location]['Margin'] += curr['Margin'];
+                acc[curr.Location]['Margin %'] += curr['Margin %'];
+                acc[curr.Location].count += 1;
+                return acc;
+            }, {});
 
-  // Filter data based on selections
-  const filteredData = data.filter(d => {
-    const monthMatch = selectedMonth === 'All' || d.Month === selectedMonth;
-    const locationMatch = selectedLocation === 'All' || d.Location === selectedLocation;
-    return monthMatch && locationMatch;
-  });
+            const locationChartData = Object.entries(locationData).map(([location, values]) => ({
+                location,
+                'Total Revenue': values['Total Revenue'],
+                'Margin': values['Margin'],
+                'Margin %': values['Margin %'] / values.count * 100
+            })).sort((a, b) => b['Total Revenue'] - a['Total Revenue']).slice(0, 15);
 
-  // Aggregate data by month for trend analysis
-  const monthlyData = data.reduce((acc, curr) => {
-    if (!acc[curr.Month]) {
-      acc[curr.Month] = {
-        'Total Revenue': 0,
-        'Total Cost': 0,
-        'Margin': 0,
-        'Units In': 0,
-        'Units Out': 0,
-        count: 0
-      };
-    }
-    acc[curr.Month]['Total Revenue'] += curr['Total Revenue'];
-    acc[curr.Month]['Total Cost'] += curr['Total Cost'];
-    acc[curr.Month]['Margin'] += curr['Margin'];
-    acc[curr.Month]['Units In'] += curr['Units In'];
-    acc[curr.Month]['Units Out'] += curr['Units Out'];
-    acc[curr.Month].count += 1;
-    return acc;
-  }, {});
+            // Calculate KPIs
+            const totalRevenue = filteredData.reduce((sum, d) => sum + d['Total Revenue'], 0);
+            const totalCost = filteredData.reduce((sum, d) => sum + d['Total Cost'], 0);
+            const totalMargin = filteredData.reduce((sum, d) => sum + d['Margin'], 0);
+            const avgMarginPercentage = totalRevenue > 0 ? (totalMargin / totalRevenue) * 100 : 0;
+            const totalUnitsIn = filteredData.reduce((sum, d) => sum + d['Units In'], 0);
+            const totalUnitsOut = filteredData.reduce((sum, d) => sum + d['Units Out'], 0);
 
-  const monthlyChartData = Object.entries(monthlyData).map(([month, values]) => ({
-    month,
-    ...values
-  }));
+            // Revenue breakdown
+            const revenueBreakdown = [
+                { name: 'Inbound Revenue', value: filteredData.reduce((sum, d) => sum + d['Inbound Revenue'], 0) },
+                { name: 'Outbound Revenue', value: filteredData.reduce((sum, d) => sum + d['Outbound Revenue'], 0) },
+                { name: 'Storage Revenue', value: filteredData.reduce((sum, d) => sum + d['1st of Storage Rev'], 0) },
+                { name: 'Recurring Storage', value: filteredData.reduce((sum, d) => sum + d['Reoccurring Storage Rev'], 0) },
+                { name: 'Accessorial', value: filteredData.reduce((sum, d) => sum + d['Accesorial Charges'], 0) },
+                { name: 'Handling', value: filteredData.reduce((sum, d) => sum + d['Handling Revenue'], 0) }
+            ].filter(item => item.value > 0);
 
-  // Aggregate data by location
-  const locationData = data.reduce((acc, curr) => {
-    if (!acc[curr.Location]) {
-      acc[curr.Location] = {
-        'Total Revenue': 0,
-        'Total Cost': 0,
-        'Margin': 0,
-        'Margin %': 0,
-        count: 0
-      };
-    }
-    acc[curr.Location]['Total Revenue'] += curr['Total Revenue'];
-    acc[curr.Location]['Total Cost'] += curr['Total Cost'];
-    acc[curr.Location]['Margin'] += curr['Margin'];
-    acc[curr.Location]['Margin %'] += curr['Margin %'];
-    acc[curr.Location].count += 1;
-    return acc;
-  }, {});
+            // Cost breakdown
+            const costBreakdown = [
+                { name: 'Fixed Costs', value: filteredData.reduce((sum, d) => sum + d['Fixed Cost'], 0) },
+                { name: 'Labor Costs', value: filteredData.reduce((sum, d) => sum + d['Total Labor Cost'], 0) },
+                { name: 'Variable Costs', value: filteredData.reduce((sum, d) => sum + d['Total Variable Cost'], 0) }
+            ].filter(item => item.value > 0);
 
-  const locationChartData = Object.entries(locationData).map(([location, values]) => ({
-    location,
-    'Total Revenue': values['Total Revenue'],
-    'Margin': values['Margin'],
-    'Margin %': values['Margin %'] / values.count * 100
-  })).slice(0, 15); // Top 15 locations
+            const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8', '#82ca9d'];
 
-  // Calculate KPIs
-  const totalRevenue = filteredData.reduce((sum, d) => sum + d['Total Revenue'], 0);
-  const totalCost = filteredData.reduce((sum, d) => sum + d['Total Cost'], 0);
-  const totalMargin = filteredData.reduce((sum, d) => sum + d['Margin'], 0);
-  const avgMarginPercentage = totalRevenue > 0 ? (totalMargin / totalRevenue) * 100 : 0;
-  const totalUnitsIn = filteredData.reduce((sum, d) => sum + d['Units In'], 0);
-  const totalUnitsOut = filteredData.reduce((sum, d) => sum + d['Units Out'], 0);
+            return (
+                <div className="min-h-screen bg-gray-50 p-8">
+                    <div className="max-w-7xl mx-auto">
+                        <h1 className="text-3xl font-bold text-gray-900 mb-8">Warehouse Operations Dashboard</h1>
+                        
+                        {/* Filters */}
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">Month</label>
+                                <select 
+                                    className="w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+                                    value={selectedMonth}
+                                    onChange={(e) => setSelectedMonth(e.target.value)}
+                                >
+                                    {months.map(month => (
+                                        <option key={month} value={month}>{month}</option>
+                                    ))}
+                                </select>
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">Location</label>
+                                <select 
+                                    className="w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+                                    value={selectedLocation}
+                                    onChange={(e) => setSelectedLocation(e.target.value)}
+                                >
+                                    {locations.map(location => (
+                                        <option key={location} value={location}>{location}</option>
+                                    ))}
+                                </select>
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">View Metric</label>
+                                <select 
+                                    className="w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+                                    value={selectedMetric}
+                                    onChange={(e) => setSelectedMetric(e.target.value)}
+                                >
+                                    <option value="Total Revenue">Total Revenue</option>
+                                    <option value="Total Cost">Total Cost</option>
+                                    <option value="Margin">Margin</option>
+                                    <option value="Units In">Units In</option>
+                                    <option value="Units Out">Units Out</option>
+                                </select>
+                            </div>
+                        </div>
 
-  // Revenue breakdown
-  const revenueBreakdown = [
-    { name: 'Inbound Revenue', value: filteredData.reduce((sum, d) => sum + d['Inbound Revenue'], 0) },
-    { name: 'Outbound Revenue', value: filteredData.reduce((sum, d) => sum + d['Outbound Revenue'], 0) },
-    { name: 'Storage Revenue', value: filteredData.reduce((sum, d) => sum + d['1st of Storage Rev'], 0) },
-    { name: 'Recurring Storage', value: filteredData.reduce((sum, d) => sum + d['Reoccurring Storage Rev'], 0) },
-    { name: 'Accessorial', value: filteredData.reduce((sum, d) => sum + d['Accesorial Charges'], 0) },
-    { name: 'Handling', value: filteredData.reduce((sum, d) => sum + d['Handling Revenue'], 0) }
-  ].filter(item => item.value > 0);
+                        {/* KPI Cards */}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                            <div className="bg-white rounded-lg shadow-lg p-6">
+                                <h3 className="text-sm font-medium text-gray-500">Total Revenue</h3>
+                                <p className="text-3xl font-bold text-gray-900">${totalRevenue.toLocaleString()}</p>
+                            </div>
+                            <div className="bg-white rounded-lg shadow-lg p-6">
+                                <h3 className="text-sm font-medium text-gray-500">Total Cost</h3>
+                                <p className="text-3xl font-bold text-gray-900">${totalCost.toLocaleString()}</p>
+                            </div>
+                            <div className="bg-white rounded-lg shadow-lg p-6">
+                                <h3 className="text-sm font-medium text-gray-500">Net Margin</h3>
+                                <p className={`text-3xl font-bold ${totalMargin >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                    ${totalMargin.toLocaleString()}
+                                </p>
+                            </div>
+                            <div className="bg-white rounded-lg shadow-lg p-6">
+                                <h3 className="text-sm font-medium text-gray-500">Margin %</h3>
+                                <p className={`text-3xl font-bold ${avgMarginPercentage >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                    {avgMarginPercentage.toFixed(1)}%
+                                </p>
+                            </div>
+                        </div>
 
-  // Cost breakdown
-  const costBreakdown = [
-    { name: 'Fixed Costs', value: filteredData.reduce((sum, d) => sum + d['Fixed Cost'], 0) },
-    { name: 'Labor Costs', value: filteredData.reduce((sum, d) => sum + d['Total Labor Cost'], 0) },
-    { name: 'Variable Costs', value: filteredData.reduce((sum, d) => sum + d['Total Variable Cost'], 0) }
-  ].filter(item => item.value > 0);
+                        {/* Charts Grid */}
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+                            {/* Monthly Trend */}
+                            <div className="bg-white rounded-lg shadow-lg p-6">
+                                <h2 className="text-lg font-semibold text-gray-900 mb-4">Monthly {selectedMetric} Trend</h2>
+                                <div className="h-96">
+                                    <ResponsiveContainer width="100%" height="100%">
+                                        <LineChart data={monthlyChartData}>
+                                            <CartesianGrid strokeDasharray="3 3" />
+                                            <XAxis dataKey="month" />
+                                            <YAxis tickFormatter={(val) => val.toLocaleString()} />
+                                            <Tooltip 
+                                                formatter={(value) => ['$' + value.toLocaleString(), selectedMetric]}
+                                            />
+                                            <Legend />
+                                            <Line 
+                                                type="monotone" 
+                                                dataKey={selectedMetric} 
+                                                stroke="#8884d8" 
+                                                name={selectedMetric}
+                                            />
+                                        </LineChart>
+                                    </ResponsiveContainer>
+                                </div>
+                            </div>
 
-  const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8', '#82ca9d'];
+                            {/* Location Performance */}
+                            <div className="bg-white rounded-lg shadow-lg p-6">
+                                <h2 className="text-lg font-semibold text-gray-900 mb-4">Top Locations by Revenue</h2>
+                                <div className="h-96">
+                                    <ResponsiveContainer width="100%" height="100%">
+                                        <BarChart 
+                                            data={locationChartData} 
+                                            layout="vertical"
+                                            margin={{ top: 5, right: 30, left: 100, bottom: 5 }}
+                                        >
+                                            <CartesianGrid strokeDasharray="3 3" />
+                                            <XAxis type="number" tickFormatter={(val) => val.toLocaleString()} />
+                                            <YAxis dataKey="location" type="category" width={100} />
+                                            <Tooltip 
+                                                formatter={(value) => ['$' + value.toLocaleString(), 'Revenue']}
+                                            />
+                                            <Legend />
+                                            <Bar dataKey="Total Revenue" fill="#8884d8" name="Revenue" />
+                                        </BarChart>
+                                    </ResponsiveContainer>
+                                </div>
+                            </div>
 
-  return (
-    <div className="min-h-screen bg-gray-50 p-8">
-      <div className="max-w-7xl mx-auto">
-        <h1 className="text-3xl font-bold text-gray-900 mb-8">Warehouse Operations Dashboard</h1>
-        
-        {/* Filters */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Month</label>
-            <select 
-              className="w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
-              value={selectedMonth}
-              onChange={(e) => setSelectedMonth(e.target.value)}
-            >
-              {months.map(month => (
-                <option key={month} value={month}>{month}</option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Location</label>
-            <select 
-              className="w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
-              value={selectedLocation}
-              onChange={(e) => setSelectedLocation(e.target.value)}
-            >
-              {locations.map(location => (
-                <option key={location} value={location}>{location}</option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">View Metric</label>
-            <select 
-              className="w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
-              value={selectedMetric}
-              onChange={(e) => setSelectedMetric(e.target.value)}
-            >
-              <option value="Total Revenue">Total Revenue</option>
-              <option value="Total Cost">Total Cost</option>
-              <option value="Margin">Margin</option>
-              <option value="Units In">Units In</option>
-              <option value="Units Out">Units Out</option>
-            </select>
-          </div>
-        </div>
+                            {/* Revenue Breakdown */}
+                            <div className="bg-white rounded-lg shadow-lg p-6">
+                                <h2 className="text-lg font-semibold text-gray-900 mb-4">Revenue Breakdown</h2>
+                                <div className="h-96">
+                                    <ResponsiveContainer width="100%" height="100%">
+                                        <PieChart>
+                                            <Pie
+                                                data={revenueBreakdown}
+                                                cx="50%"
+                                                cy="50%"
+                                                labelLine={false}
+                                                label={({ name, percent }) => `${name} (${(percent * 100).toFixed(0)}%)`}
+                                                outerRadius={150}
+                                                fill="#8884d8"
+                                                dataKey="value"
+                                            >
+                                                {revenueBreakdown.map((entry, index) => (
+                                                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                                ))}
+                                            </Pie>
+                                            <Tooltip 
+                                                formatter={(value) => ['$' + value.toLocaleString(), 'Value']}
+                                            />
+                                            <Legend />
+                                        </PieChart>
+                                    </ResponsiveContainer>
+                                </div>
+                            </div>
 
-        {/* KPI Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <div className="bg-white rounded-lg shadow-lg p-6">
-            <h3 className="text-sm font-medium text-gray-500">Total Revenue</h3>
-            <p className="text-3xl font-bold text-gray-900">${totalRevenue.toLocaleString()}</p>
-          </div>
-          <div className="bg-white rounded-lg shadow-lg p-6">
-            <h3 className="text-sm font-medium text-gray-500">Total Cost</h3>
-            <p className="text-3xl font-bold text-gray-900">${totalCost.toLocaleString()}</p>
-          </div>
-          <div className="bg-white rounded-lg shadow-lg p-6">
-            <h3 className="text-sm font-medium text-gray-500">Net Margin</h3>
-            <p className={`text-3xl font-bold ${totalMargin >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-              ${totalMargin.toLocaleString()}
-            </p>
-          </div>
-          <div className="bg-white rounded-lg shadow-lg p-6">
-            <h3 className="text-sm font-medium text-gray-500">Margin %</h3>
-            <p className={`text-3xl font-bold ${avgMarginPercentage >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-              {avgMarginPercentage.toFixed(1)}%
-            </p>
-          </div>
-        </div>
+                            {/* Cost Distribution */}
+                            <div className="bg-white rounded-lg shadow-lg p-6">
+                                <h2 className="text-lg font-semibold text-gray-900 mb-4">Cost Distribution</h2>
+                                <div className="h-96">
+                                    <ResponsiveContainer width="100%" height="100%">
+                                        <PieChart>
+                                            <Pie
+                                                data={costBreakdown}
+                                                cx="50%"
+                                                cy="50%"
+                                                labelLine={false}
+                                                label={({ name, percent }) => `${name} (${(percent * 100).toFixed(0)}%)`}
+                                                outerRadius={150}
+                                                fill="#8884d8"
+                                                dataKey="value"
+                                            >
+                                                {costBreakdown.map((entry, index) => (
+                                                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                                ))}
+                                            </Pie>
+                                            <Tooltip 
+                                                formatter={(value) => ['$' + value.toLocaleString(), 'Value']}
+                                            />
+                                            <Legend />
+                                        </PieChart>
+                                    </ResponsiveContainer>
+                                </div>
+                            </div>
+                        </div>
 
-        {/* Charts Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-          {/* Monthly Trend */}
-          <div className="bg-white rounded-lg shadow-lg p-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">Monthly {selectedMetric} Trend</h2>
-            <div className="h-96">
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={monthlyChartData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="month" />
-                  <YAxis tickFormatter={(val) => val.toLocaleString()} />
-                  <Tooltip 
-                    formatter={(value) => ['$' + value.toLocaleString(), selectedMetric]}
-                  />
-                  <Legend />
-                  <Line 
-                    type="monotone" 
-                    dataKey={selectedMetric} 
-                    stroke="#8884d8" 
-                    name={selectedMetric}
-                  />
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
+                        {/* Operational Metrics */}
+                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+                            <div className="bg-white rounded-lg shadow-lg p-6">
+                                <h3 className="text-sm font-medium text-gray-500">Units In</h3>
+                                <p className="text-3xl font-bold text-gray-900">{totalUnitsIn.toLocaleString()}</p>
+                            </div>
+                            <div className="bg-white rounded-lg shadow-lg p-6">
+                                <h3 className="text-sm font-medium text-gray-500">Units Out</h3>
+                                <p className="text-3xl font-bold text-gray-900">{totalUnitsOut.toLocaleString()}</p>
+                            </div>
+                            <div className="bg-white rounded-lg shadow-lg p-6">
+                                <h3 className="text-sm font-medium text-gray-500">Efficiency Ratio</h3>
+                                <p className="text-3xl font-bold text-gray-900">
+                                    {totalUnitsIn > 0 ? ((totalUnitsOut / totalUnitsIn) * 100).toFixed(1) : '0'}%
+                                </p>
+                            </div>
+                        </div>
 
-          {/* Location Performance */}
-          <div className="bg-white rounded-lg shadow-lg p-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">Top Locations by Revenue</h2>
-            <div className="h-96">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart 
-                  data={locationChartData} 
-                  layout="vertical"
-                  margin={{ top: 5, right: 30, left: 100, bottom: 5 }}
-                >
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis type="number" tickFormatter={(val) => val.toLocaleString()} />
-                  <YAxis dataKey="location" type="category" width={100} />
-                  <Tooltip 
-                    formatter={(value) => ['$' + value.toLocaleString(), 'Revenue']}
-                  />
-                  <Legend />
-                  <Bar dataKey="Total Revenue" fill="#8884d8" name="Revenue" />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
+                        {/* Data Table */}
+                        <div className="bg-white rounded-lg shadow-lg p-6">
+                            <h2 className="text-lg font-semibold text-gray-900 mb-4">Warehouse Performance Summary</h2>
+                            <div className="overflow-x-auto">
+                                <table className="min-w-full divide-y divide-gray-200">
+                                    <thead>
+                                        <tr>
+                                            <th className="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Location</th>
+                                            <th className="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Revenue</th>
+                                            <th className="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Cost</th>
+                                            <th className="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Margin</th>
+                                            <th className="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Margin %</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="bg-white divide-y divide-gray-200">
+                                        {locationChartData.slice(0, 10).map((location, index) => (
+                                            <tr key={index}>
+                                                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{location.location}</td>
+                                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${location['Total Revenue'].toLocaleString()}</td>
+                                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${locationData[location.location]['Total Cost'].toLocaleString()}</td>
+                                                <td className={`px-6 py-4 whitespace-nowrap text-sm ${location.Margin >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                                    ${location.Margin.toLocaleString()}
+                                                </td>
+                                                <td className={`px-6 py-4 whitespace-nowrap text-sm ${location['Margin %'] >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                                    {location['Margin %'].toFixed(1)}%
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
 
-          {/* Revenue Breakdown */}
-          <div className="bg-white rounded-lg shadow-lg p-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">Revenue Breakdown</h2>
-            <div className="h-96">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={revenueBreakdown}
-                    cx="50%"
-                    cy="50%"
-                    labelLine={false}
-                    label={({ name, percent }) => `${name} (${(percent * 100).toFixed(0)}%)`}
-                    outerRadius={150}
-                    fill="#8884d8"
-                    dataKey="value"
-                  >
-                    {revenueBreakdown.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                    ))}
-                  </Pie>
-                  <Tooltip 
-                    formatter={(value) => ['$' + value.toLocaleString(), 'Value']}
-                  />
-                  <Legend />
-                </PieChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
-
-          {/* Cost Distribution */}
-          <div className="bg-white rounded-lg shadow-lg p-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">Cost Distribution</h2>
-            <div className="h-96">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={costBreakdown}
-                    cx="50%"
-                    cy="50%"
-                    labelLine={false}
-                    label={({ name, percent }) => `${name} (${(percent * 100).toFixed(0)}%)`}
-                    outerRadius={150}
-                    fill="#8884d8"
-                    dataKey="value"
-                  >
-                    {costBreakdown.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                    ))}
-                  </Pie>
-                  <Tooltip 
-                    formatter={(value) => ['$' + value.toLocaleString(), 'Value']}
-                  />
-                  <Legend />
-                </PieChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
-        </div>
-
-        {/* Operational Metrics */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-          <div className="bg-white rounded-lg shadow-lg p-6">
-            <h3 className="text-sm font-medium text-gray-500">Units In</h3>
-            <p className="text-3xl font-bold text-gray-900">{totalUnitsIn.toLocaleString()}</p>
-          </div>
-          <div className="bg-white rounded-lg shadow-lg p-6">
-            <h3 className="text-sm font-medium text-gray-500">Units Out</h3>
-            <p className="text-3xl font-bold text-gray-900">{totalUnitsOut.toLocaleString()}</p>
-          </div>
-          <div className="bg-white rounded-lg shadow-lg p-6">
-            <h3 className="text-sm font-medium text-gray-500">Efficiency Ratio</h3>
-            <p className="text-3xl font-bold text-gray-900">
-              {totalUnitsIn > 0 ? ((totalUnitsOut / totalUnitsIn) * 100).toFixed(1) : '0'}%
-            </p>
-          </div>
-        </div>
-
-        {/* Data Table */}
-        <div className="bg-white rounded-lg shadow-lg p-6">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">Warehouse Performance Summary</h2>
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead>
-                <tr>
-                  <th className="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Location</th>
-                  <th className="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Revenue</th>
-                  <th className="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Cost</th>
-                  <th className="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Margin</th>
-                  <th className="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Margin %</th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {locationChartData.slice(0, 10).map((location, index) => (
-                  <tr key={index}>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{location.location}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${location['Total Revenue'].toLocaleString()}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${locationData[location.location]['Total Cost'].toLocaleString()}</td>
-                    <td className={`px-6 py-4 whitespace-nowrap text-sm ${location.Margin >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                      ${location.Margin.toLocaleString()}
-                    </td>
-                    <td className={`px-6 py-4 whitespace-nowrap text-sm ${location['Margin %'] >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                      {location['Margin %'].toFixed(1)}%
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-export default PowerBIDashboard;
+        // Render the app
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<PowerBIDashboard />);
+    </script>
+</body>
+</html>
